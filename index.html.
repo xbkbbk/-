@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Карта земельных участков</title>
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+#map {
+  width: 100%;
+  height: 100%;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([55.75, 37.62], 10);
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: '&copy; OpenStreetMap contributors'
+  }
+).addTo(map);
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[c]);
+}
+fetch('./uchastki.geojson')
+  .then(response => {
+    if (!response.ok) throw new Error('GeoJSON не найден');
+    return response.json();
+  })
+  .then(data => {
+    const layer = L.geoJSON(data, {
+      style: {
+        color: '#1769aa',
+        weight: 2,
+        fillColor: '#42a5f5',
+        fillOpacity: 0.3
+      },
+      onEachFeature: function(feature, layer) {
+        const props = feature.properties || {};
+        const html = Object.entries(props)
+          .map(([key, value]) =>
+            '<b>' + escapeHTML(key) + ':</b> ' +
+            escapeHTML(value)
+          )
+          .join('<br>');
+        layer.bindPopup(html || 'Нет атрибутов');
+      }
+    }).addTo(map);
+    if (layer.getLayers().length) {
+      map.fitBounds(layer.getBounds(), {padding: [20, 20]});
+    }
+  })
+  .catch(error => {
+    console.error(error);
+    alert('Ошибка загрузки GeoJSON: ' + error.message);
+  });
+</script>
+</body>
+</html>
